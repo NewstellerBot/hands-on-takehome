@@ -1,0 +1,24 @@
+{% extends 'base.html' %} {% block content %}
+<main class="p-4 flex justify-center">
+  <div class="bg-white p-10 rounded-xl max-w-xl shadow">
+    <h1 class="font-semibold text-3xl">Exploration Mission</h1>
+    <p class="mt-3">
+      Welcome to the Mars Exploration mission! Your task is to ride the rover
+      and collect data on temperature and pressure readings from various
+      locations on the planet's surface. Follow these instructions carefully to
+      ensure the success of the mission: Board the rover and strap yourself in.
+      Use the controls to navigate the rover to different locations on the
+      planet's surface. Once you arrive at a location, use the onboard equipment
+      to measure the temperature readings. Good luck, and safe travels on the
+      Martian surface!
+    </p>
+    <a href="{{url_for('dashboard.main')}}">
+      <button
+        class="bg-blue-600 mt-3 rounded text-white px-4 py-2 font-semibold"
+      >
+        Connect to Rover
+      </button></a
+    >
+  </div>
+</main>
+{% endblock content %}

@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<title>Handson Lab</title>
+
+<script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.4/jquery.min.js"></script>
+<!-- <script src="https://cdn.tailwindcss.com"></script> -->
+
+<link
+  rel="stylesheet"
+  href="{{ url_for('static', filename='./dist/output.css') }}"
+/>
+<div class="min-h-screen flex justify-center items-center">
+  <div
+    class="w-full min-h-screen bg-gradient-to-tr from-blue-700 to-purple-600 absolute top-0 left-0 -z-50"
+  ></div>
+  <nav class="fixed top-0 py-5 px-2">
+    <ul class="flex flex-row gap-3 text-white font-bold">
+      {% if g.user %}
+      <li><span>{{ g.user['username'] }}</span></li>
+      <li>
+        <a class="hover:underline" href="{{ url_for('auth.logout') }}"
+          >Log Out</a
+        >
+        {% else %}
+      </li>
+
+      <li>
+        <a class="hover:underline" href="{{ url_for('auth.register') }}"
+          >Register</a
+        >
+      </li>
+      <li>
+        <a class="hover:underline" href="{{ url_for('auth.login') }}">Log In</a>
+        {% endif %}
+      </li>
+    </ul>
+  </nav>
+  <section class="px-5 content min-w-full h-screen overflow-hidden pt-20">
+    {% block content %}{% endblock %}
+  </section>
+</div>

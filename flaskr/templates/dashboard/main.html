@@ -1,0 +1,224 @@
+{% extends 'base.html' %} {% block content %}
+<html>
+  <style>
+    #speed::webkit-slider-thumb {
+      color: white;
+    }
+  </style>
+  <script type="text/javascript" charset="utf-8">
+    var socket
+    var ctx
+    var canvas
+
+    const map_to_color = (temp) => {
+      if (temp < 20) return 'rgb(14 165 233)'
+      if (temp > 50) return 'rgb(239 68 68)'
+      return 'rgb(251 146 60)'
+    }
+
+    const toDeg = (input) => {
+      return Math.floor((input - 50) * 3.6)
+    }
+
+    const debounce = (func, wait) => {
+      let timeout
+
+      return function executedFunction(...args) {
+        const later = () => {
+          clearTimeout(timeout)
+          func(...args)
+        }
+
+        clearTimeout(timeout)
+        timeout = setTimeout(later, wait)
+      }
+    }
+
+    const clearCtx = (ctx, canvas) => {
+      ctx.fillStyle = 'rgb(30 41 59)'
+      ctx.fillRect(0, 0, canvas.width, canvas.height)
+    }
+
+    const scale_to_fit = (x, y, height, width) => {
+      return {
+        x: (x / 500) * width * 2,
+        y: (y / 500) * height * 2,
+      }
+    }
+
+    $(document).ready(() => {
+      canvas = document.getElementById('map-canvas')
+      ctx = canvas.getContext('2d')
+
+      var { height, width } = {
+        height: $('#map').height(),
+        width: $('#map').width(),
+      }
+
+      var measures = []
+      var gx
+      var gy
+
+      canvas.style.height = height + 'px'
+      canvas.style.width = width + 'px'
+
+      var scale = window.devicePixelRatio
+
+      canvas.width = width * scale
+      canvas.height = height * scale
+
+      socket = io()
+
+      clearCtx(ctx, canvas)
+
+      $('#wrapper > *').addClass(
+        'bg-white rounded-xl p-5 flex-grow-0 shadow-lg'
+      )
+
+      $('#speed')
+        .on(
+          'input',
+          debounce(
+            (e) => socket.emit('speed', { data: e.target.value.toString() }),
+            200
+          )
+        )
+        .on('input', (e) => $('#speed-value').text(e.target.value))
+
+      $('#direction')
+        .on(
+          'input',
+          debounce(
+            (e) =>
+              socket.emit('direction', {
+                data: toDeg(e.target.value).toString(),
+              }),
+            200
+          )
+        )
+        .on('input', (e) => $('#direction-value').text(toDeg(e.target.value)))
+
+      $('#temperature').on(
+        'click',
+        debounce((e) => socket.emit('temperature'), 200)
+      )
+
+      socket.on('temperature', (res) => {
+        console.log(measures)
+        measures.push({ x: gx, y: gy, temp: res.payload })
+        $('#temperature-value').text(`${Math.floor(res.payload)}°`)
+      })
+
+      socket.on('connect', function () {
+        $('#status')
+          .text('connected')
+          .addClass('text-green-600')
+          .removeClass('text-red-600')
+        $('#dot').addClass('bg-green-600').removeClass('bg-red-600')
+      })
+
+      socket.on('message', function (msg) {
+        console.log(msg)
+      })
+
+      socket.on('telemetry', function (data) {
+        const { x: _x, y: _y } = JSON.parse(data.payload)
+        const { x, y } = scale_to_fit(_x, _y, height, width)
+
+        gx = x
+        gy = y
+
+        clearCtx(ctx, canvas)
+
+        ctx.fillStyle = '#ffff'
+        ctx.beginPath()
+        ctx.arc(x - 5, y - 5, 10, 0, Math.PI * 2)
+        ctx.fill()
+
+        measures.forEach((measure) => {
+          const { x, y, temp } = measure
+          ctx.fillStyle = map_to_color(temp)
+          ctx.beginPath()
+          ctx.arc(x - 5, y - 5, 10, 0, Math.PI * 2)
+          ctx.fill()
+        })
+      })
+
+      socket.on('speed', function (res) {
+        if (res.status == '200') $('#speed-value').text(res.payload)
+        else alert('error accured')
+      })
+
+      socket.on('direction', function (res) {
+        if (res.status == '200') $('#direction-value').text(res.payload)
+        else alert('error accured')
+      })
+
+      socket.on('disconnect', function () {
+        $('#status')
+          .text('disconnected')
+          .removeClass('text-green-600')
+          .addClass('text-red-600')
+        $('#dot').removeClass('bg-green-600').addClass('bg-red-600')
+      })
+    })
+  </script>
+  <div class="flex flex-col justify-center items-center">
+    <div
+      id="video"
+      class="h-52 max-w-lg rounded-xl w-full mb-8 bg-slate-800 grid items-center shadow"
+    >
+      <p class="text-xl font-bold text-white text-center">Livestream</p>
+    </div>
+    <div
+      id="map"
+      class="h-52 max-w-lg rounded-xl w-full mb-8 grid bg-white items-center shadow overflow-clip"
+    >
+      <canvas id="map-canvas"></canvas>
+    </div>
+    <div id="wrapper" class="flex text-lg flex-wrap gap-3 justify-center">
+      <div>
+        <h1 class="mb-2 font-semibold">Status</h1>
+        <div class="flex items-center gap-2">
+          <div id="dot" class="w-5 h-5 rounded-full bg-black"></div>
+          <p id="status">not connected</p>
+        </div>
+      </div>
+      <div>
+        <label for="speed" class="block mb-2 font-semibold"
+          >Speed <span id="speed-value">0</span></label
+        >
+        <input
+          id="speed"
+          type="range"
+          value="0"
+          class="w-full h-3 bg-blue-400 rounded-lg appearance-none cursor-pointer shadow"
+        />
+      </div>
+      <div>
+        <label for="direction" class="block mb-2 font-semibold"
+          >Direction <span id="direction-value">0</span></label
+        >
+        <input
+          id="direction"
+          type="range"
+          value="50"
+          class="w-full h-3 bg-blue-400 rounded-lg appearance-none cursor-pointer shadow"
+        />
+      </div>
+      <div class="flex-col">
+        <label for="temperature" class="font-semibold block"
+          >Temperature <span id="temperature-value"></span
+        ></label>
+        <button
+          id="temperature"
+          class="bg-blue-600 rounded text-base py-1 px-2 text-white mt-2"
+        >
+          Get Temperature
+        </button>
+      </div>
+    </div>
+  </div>
+</html>
+
+{% endblock %}
